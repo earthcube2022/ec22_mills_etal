@@ -137,7 +137,6 @@ def get_metadata_for_var(var_tag,startDate,endDate,info_to_store,url_prefix,quer
             url = '/profiles/listID?startDate=' + list_of_days[i] + \
               '&endDate=' + list_of_days[i+1] + '&data=' + var_tag+ \
               '&polygon=' + polygon
-
         d_raw = requests.get(url_prefix+url).json()
 
         if raw_check(d_raw=d_raw,d_raw_type='list') ==1:
@@ -149,7 +148,7 @@ def get_metadata_for_var(var_tag,startDate,endDate,info_to_store,url_prefix,quer
             for i_ind in np.arange(0,len(ind)-1,1):
                 if ind[i_ind+1]-1 == 0:
                     bfr_d_meta = requests.get(url_prefix+
-                                    '/profiles?ids='+string_of_ids(d_raw[ind[i_ind]])).json()
+                                    '/profiles?ids='+d_raw[ind[i_ind]]).json()
                 elif ind[i_ind+1]-1 > 0:
                     bfr_d_meta = requests.get(url_prefix+
                                     '/profiles?ids='+string_of_ids(d_raw[ind[i_ind]:ind[i_ind+1]-1])).json()
