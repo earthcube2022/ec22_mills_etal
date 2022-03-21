@@ -1,0 +1,11 @@
+name: py_NSF_EC2022
+
+dependencies:
+  - python=3.8
+  - requests
+  - cartopy
+  - pandas
+  - pip
+  - scipy
+  - pip:
+    - svgpath2mpl
