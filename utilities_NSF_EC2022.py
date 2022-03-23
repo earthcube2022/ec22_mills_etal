@@ -28,21 +28,7 @@ warnings.filterwarnings('ignore')
 from dateutil import parser
 
 ########### data processing #################
-# Check if anything came back from the API or no data were found/an error was returned (to update):
-def raw_check(d_raw,d_raw_type,writeFlag=False):
-#     print(type(d_raw))
-#     print(d_raw)
-    try:
-        if 'message' in d_raw.keys():
-            if writeFlag:
-                print(d_raw)
-            return 0
-    except:
-        if d_raw_type=='list':
-            return check_list(d_raw)
-        elif d_raw_type=='list_of_lists':
-            return check_list_of_list(d_raw)
-
+#
 ########### checks for objects coming back from API queries
 def check_list(lst,writeFlag=False):
     if lst and isinstance(lst,list):
@@ -84,98 +70,111 @@ def check_list_of_dict(lst,writeFlag=False):
         if writeFlag:
             print(lst) 
         return 0 
-########### The two functions below should be merged in one giving in input to the function the object type
-def get_info_from_dict(d_dict,info_to_store):
-    if isinstance(d_dict,dict):
-        lst_out = []
-        if any("lon" in s for s in info_to_store) or  any("lat" in s for s in info_to_store):
-            geoloc = d_dict['geolocation']
-            lon = geoloc['coordinates'][0]
-            lat = geoloc['coordinates'][1]
-                
-        if any("cols_bySource" in s for s in info_to_store):
-            isource = d_dict['source_info']
-            bfr_source = []
-            for jsource in isource:
-                bfr_source = bfr_source+jsource.get('source')
-                cols_bySource = select_color_byList(bfr_source)
-        for i in info_to_store:
-            eval('lst_out.append('+ i +')')
-    return lst_out
-    
-def get_info_from_df(df,info_to_store):
-    if isinstance(df,pd.DataFrame):
-        lst_out = []
-        if any("lon" in s for s in info_to_store) or  any("lat" in s for s in info_to_store):
-            lon = []
-            lat = []
-            for geoloc in df.geolocation:
-                lon.append(geoloc['coordinates'][0])
-                lat.append(geoloc['coordinates'][1])
-
-        if any("cols_bySource" in s for s in info_to_store):
-            cols_bySource = []
-            for isource in df.source_info:
-                bfr_source = []
-                for jsource in isource:
-                    bfr_source = bfr_source+jsource.get('source')
-                    cols_bySource.append(select_color_byList(bfr_source))
-        for i in info_to_store:
-            eval('lst_out.append('+ i +')')
-    return lst_out
-###########
-# get metadata for variable
-def get_metadata_for_var(var_tag,startDate,endDate,info_to_store,url_prefix,query_type='global',polygon=[],max_ids_in_query=3):
-    list_of_days = create_list_of_days(startDate,endDate)
+#############
+def get_data_for_var(var_tag,startDate,endDate,url_prefix, \
+                     query_type='global',polygon=[],presRange='',dt_tag='d',getData=False,writeTag=False):
+    # for the metadata query (getData=False), presRange is not used even if specified
+    list_of_days = create_list_of_days(startDate,endDate,dt_tag=dt_tag)
     info_ALL = []
     for i in np.arange(0,len(list_of_days)-1):
-        #time.sleep(1)
+        time.sleep(.25)
         if query_type=='global':
-            url = '/profiles/listID?startDate=' + list_of_days[i] + \
-              '&endDate=' + list_of_days[i+1] + '&data=' + var_tag #+ \
+            if getData:
+                url = '/profiles?startDate='+list_of_days[i]+'&endDate='+list_of_days[i+1]+ \
+                      '&data='+var_tag+',pres'
+            else:
+                url = '/profiles?startDate='+list_of_days[i]+'&endDate='+list_of_days[i+1]+ \
+                      '&datavars='+var_tag+',pres'
         elif query_type=='inPolygon':
-            url = '/profiles/listID?startDate=' + list_of_days[i] + \
-              '&endDate=' + list_of_days[i+1] + '&data=' + var_tag+ \
-              '&polygon=' + polygon
-        d_raw = requests.get(url_prefix+url).json()
-
-        if raw_check(d_raw=d_raw,d_raw_type='list') ==1:
-            ind = np.arange(0,len(d_raw),max_ids_in_query)
-
-            if len(ind)==1:
-                 ind = np.append(ind,len(d_raw))
-            # query using the ids (loop so that you don't query too many ids at a time)
-            for i_ind in np.arange(0,len(ind)-1,1):
-                if ind[i_ind+1]-1 == 0:
-                    bfr_d_meta = requests.get(url_prefix+
-                                    '/profiles?ids='+d_raw[ind[i_ind]]).json()
-                elif ind[i_ind+1]-1 > 0:
-                    bfr_d_meta = requests.get(url_prefix+
-                                    '/profiles?ids='+string_of_ids(d_raw[ind[i_ind]:ind[i_ind+1]-1])).json()
-
-                if type(bfr_d_meta) is dict and 'message' in bfr_d_meta.keys():
-                    continue
-                else:
-                    if len(bfr_d_meta)==1 and isinstance(bfr_d_meta[0],dict):
-                        info_ALL.append(get_info_from_dict(d_dict=bfr_d_meta[0],info_to_store=info_to_store))
-                    elif len(bfr_d_meta)>1:
-                        info_ALL.append(get_info_from_df(df=pd.DataFrame(bfr_d_meta),info_to_store=info_to_store))
+            if getData:
+                url = '/profiles?startDate='+list_of_days[i]+'&endDate='+list_of_days[i+1]+ \
+                  '&polygon='+ polygon + \
+                  '&data='+var_tag+',pres'
+            else:
+                url = '/profiles?startDate='+list_of_days[i]+'&endDate='+list_of_days[i+1]+ \
+                      '&polygon='+ polygon + \
+                      '&datavars='+var_tag+',pres'
+        if presRange:
+            url = url + '&presRange=' + presRange
+        try:
+            d_raw = requests.get(url_prefix+url).json()
+            ans = check_error_message(ans=d_raw,writeFlag=True)
+            if ans == 404:
+                # print(url_prefix+url)
+                continue
+        except:
+            print(url_prefix+url)
+            ciao_stop
+        # print(str(len(d_raw)) + ': ' + str(type(d_raw)))
+        if check_list_of_dict(lst=d_raw,writeFlag=True) == 1:
+            if writeTag:
+                print(url_prefix+url)
+            info_ALL = info_ALL + d_raw
+        else:
+            ciao_type
     return info_ALL
+##############
+def get_info_from_df(df,info_to_store):
+    if isinstance(df,pd.DataFrame):
+        lon  = []
+        lat  = []
+        date = []
+        cols_bySource=[]
 
+        lst_out = []
+        for i in np.arange(0,len(df),1):
+            #
+            if any("lon" in s for s in info_to_store) or  any("lat" in s for s in info_to_store):
+                lon.append(df.geolocation[i]['coordinates'][0])
+                lat.append(df.geolocation[i]['coordinates'][1])
+            #
+            if any("date" in s for s in info_to_store):
+                date.append(df.timestamp[i])
+            #
+            if any("cols_bySource" in s for s in info_to_store):
+                bfr_source= []
+                for jsource in df.source_info[i]:
+                    bfr_source = bfr_source + jsource['source']
+                cols_bySource.append(select_color_byList(lst_in=bfr_source))
+        for i in info_to_store:
+            eval('lst_out.append('+ i +')')
+            
+        dict_info = {}
+        for i,ival in zip(info_to_store,lst_out):
+            dict_info[i] = ival
+    return dict_info
+##############
+# check if there is an error message
+def check_error_message(ans,writeFlag=False):
+    if isinstance(ans,dict) and 'message' in ans.keys() and 'code' in ans.keys():
+        if writeFlag:
+            print(str(ans['code']) + ': ' + ans['message'])
+        if ans['code']==403:
+            print('Data were not returned')
+            ciao403
+        return ans['code']        
+    elif ans:
+        return np.nan
+#         if ans['code']==403:
+#             print(ans)
+#             ciao_stop
+##########                
 # create a list of days (in string format) from string dates in input, e.g.
 #startDate='2021-05-01T00:00:00Z'
 #endDate  ='2021-05-10T00:00:00Z'
-def create_list_of_days(startDate,endDate):
+def create_list_of_days(startDate,endDate,dt_tag='d'): 
+    # dt_tag could be '30T', 'd', ...
     list_of_days = (pd.DataFrame(columns=['NULL'],
                             index=pd.date_range(startDate,endDate,
-                                                freq='30T')) #'d'
+                                                freq=dt_tag)) #'d'
                                    .between_time('00:00','23:59')
                                    .index.strftime('%Y-%m-%dT%H:%M:%SZ')
                                    .tolist()
                 )
     #####list_of_days      = [datetime.strptime(ii,'%Y-%m-%dT%H:%M:%SZ') for ii in bfr_times]
     ## this should be added back if I am allowed to do more queries (UPDATE: IT MAY NOT BE NEEDED)
-    #list_of_days.append(list_of_days[-1][0:11]+'23:59:59Z')
+    if list_of_days[-1] != endDate:
+        list_of_days.append(endDate[0:11]+'23:59:59Z')
     return list_of_days
 
 # create a string of ids in the format needed for an API query (the input is a list of lists from an API query)
@@ -185,45 +184,6 @@ def string_of_ids(d_raw):
         lst = lst + ilst +','
     lst = lst[0:-2]
     return lst
-
-
-# # create a list of panda dataFrames from a list of dictionaries coming from API queries
-# def create_list_of_df_from_list_of_dict(d_lst_of_dict):
-#     # check that you have a list of lists in input
-#     if check_list_of_dict(lst=d_lst_of_dict)==1:
-#         # convert all the lists in d_lst_of_lst into panda dataframes
-#         data_list_of_df = []
-#         for d in d_lst_of_dict:
-#             data_list_of_df.append(pd.DataFrame(d))
-#     else:
-#         print('Function create_list_of_df: check the variable d and what type it is')  
-#         print(type(d_lst_of_lst))
-#         print(d_lst_of_lst)
-#         stop
-#     return data_list_of_df
-
-##### this below may be outdated...
-# # create a list of panda dataFrames from a list of lists coming from API queries
-# def create_list_of_df(d_lst_of_lst):
-#     # check that you have a list of lists in input
-#     if check_list_of_list(lst=d_lst_of_lst)==1:
-#         # convert all the lists in d_lst_of_lst into panda dataframes
-#         data_list_of_df = []
-#         # check if there is only one list in the list
-#         for d in d_lst_of_lst:
-#             if check_list(d)==1:
-#                 data_list_of_df.append(pd.DataFrame(d))
-#             else:
-#                 print('Function create_list_of_df: check the variable d and what type it is') 
-#                 print(type(d))
-#                 print(d)
-#                 stop
-#     else:
-#         print('Function create_list_of_df: check the variable d and what type it is')  
-#         print(type(d_lst_of_lst))
-#         print(d_lst_of_lst)
-#         stop
-#     return data_list_of_df
 
 ########### data visualization #################
 # set up a map
@@ -257,6 +217,32 @@ def set_up_map(set_extent_info,central_long=180,delta_lonGrid=30,delta_latGrid=3
     #plate_carree = ccrs.PlateCarree(central_longitude=central_long)
     return ax, gl, usemap_proj
 
+###############
+def plot_locations_withColor(lon,lat,cols,dx=30,dy=30,central_long=180,markersz=10,fnt_size=28):
+
+    # plot a map with profile locations: if cols is only 1 string, then the same color is used for all the dots
+    # if cols is a list of strings of the same length as e.g. lon, then one col per lon is used
+    # else 'k' is used for color
+    fig = plt.figure(figsize=(20,7))
+
+    ax, gl, usemap_proj = set_up_map(set_extent_info=[min(lon)-dx,max(lon)+dx,min(lat)-dy,max(lat)+dy],
+                                     central_long=central_long,
+                                     delta_lonGrid=90,delta_latGrid=45,fnt_size=28)
+
+    for i in np.arange(0,len(lon),1):
+        if len(cols) == len(lon):
+            col = cols[i]
+        elif isinstance(col,str):
+            col = cols
+        else:
+            col = 'k'
+        plt.plot(lon[i],lat[i],marker='o',markersize=markersz,color=col,transform=ccrs.PlateCarree()) # cols_bySource[i]
+
+    # im = plt.scatter(float_events_lon_i,float_events_lat_i,transform=ccrs.PlateCarree(),s=1000,marker='*',
+    #                         color=my_colors[i], linewidth=3.5) 
+
+    plt.show()
+###############
 # pick color based on string
 def select_color_byString(str_in):
     if str_in == 'argo_core':
