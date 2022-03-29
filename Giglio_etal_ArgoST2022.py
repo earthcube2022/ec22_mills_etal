@@ -50,7 +50,7 @@ from utilities_NSF_EC2022 import set_up_map,select_color_byList,plot_locations_w
 # set parameters that will be used later for API queries
 
 # prefix to use with all API queries
-url_prefix = 'https://argovis-apix-atoc-argovis-dev.apps.containers02.colorado.edu'
+url_prefix = 'https://argovis-api-atoc-argovis-dev.apps.containers02.colorado.edu'
 myAPIkey   = '8a9a6fb0a7c59b1202ffee94a719b27a173774e5'
 
 # shape defining the region of interest (copy and paste from the browser, i.e. current "shape" parameter in the url)
