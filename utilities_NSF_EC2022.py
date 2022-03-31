@@ -108,7 +108,7 @@ def get_data_from_url(url,myAPIkey,writeFlag=False):
 #############
 def create_url(startDate,endDate,url_prefix, \
                radius_km=[],center=[], \
-               polygon=[],data='',datavars='',presRange='', \
+               polygon=[],data='',presRange='', \
                source='',platform_id='',woceline=''):
     # what is not used with which queries
     # what does not make sense to query together
@@ -139,11 +139,7 @@ def create_url(startDate,endDate,url_prefix, \
         url = url + '&radius=' + radius_km + '&center=' + center
     elif polygon:
         url = url + '&polygon=' + polygon
-    
-    # queries by variable name
-    if datavars:
-        url = url + '&datavars=' + datavars
-    
+        
     # queries by variable data
     if data:
         url = url + '&data=' + data
@@ -169,7 +165,7 @@ def create_url(startDate,endDate,url_prefix, \
 def get_data_for_timeRange(startDate,endDate,url_prefix, \
                      myAPIkey,\
                      radius_km=[],center=[], \
-                     polygon=[],data='',datavars='',presRange='', \
+                     polygon=[],data='',presRange='', \
                      source='',platform_id='',woceline='', \
                      dt_tag='d',writeFlag=False):
     # returns a panda dataFrame
@@ -185,7 +181,7 @@ def get_data_for_timeRange(startDate,endDate,url_prefix, \
                                endDate=list_of_days[i+1], \
                                url_prefix=url_prefix, \
                                radius_km=radius_km,center=center, \
-                               polygon=polygon,data=data,datavars=datavars,presRange=presRange, \
+                               polygon=polygon,data=data,presRange=presRange, \
                                source=source,platform_id=platform_id,woceline=woceline)
         #print(url_to_use)
         info_ALL   = info_ALL + get_data_from_url(url=url_to_use,myAPIkey=myAPIkey,writeFlag=writeFlag)
