@@ -1,5 +1,5 @@
 #data processing
-import requests
+import requests, copy
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta, date
@@ -106,10 +106,11 @@ def get_data_from_url(url,myAPIkey,writeFlag=False):
         print(ans)
         ciao_check_obj_type_and_err_code
 #############
-def create_url(startDate,endDate,url_prefix, \
+def create_url(url_prefix, \
+               startDate='',endDate='', \
                radius_km=[],center=[], \
                polygon=[],data='',presRange='', \
-               source='',platform_id='',woceline=''):
+               source='',platform_id='',woceline='',profile_id=''):
     # what is not used with which queries
     # what does not make sense to query together
     # does this order matter in the url?
@@ -133,7 +134,14 @@ def create_url(startDate,endDate,url_prefix, \
     #### if users set writeFlag = True, then they will see the URL when get_data_from_url is called in get_data_for_timeRange
      
     # In Python 3.10, the part below should be using match/case
-    url = url_prefix + '&startDate='+startDate+'&endDate='+endDate
+    
+    url = url_prefix
+    
+    if startDate:
+        url = url + '&startDate=' + startDate
+    if endDate:
+        url = url + '&endDate=' + endDate
+        
     # regional queries
     if radius_km and center:
         url = url + '&radius=' + radius_km + '&center=' + center
@@ -159,6 +167,10 @@ def create_url(startDate,endDate,url_prefix, \
     # queries by woceline
     if woceline:
         url = url + '&woceline=' + woceline
+
+    # queries by _id
+    if profile_id:
+        url = url + '&id=' + profile_id
         
     return url
 #############
@@ -177,9 +189,9 @@ def get_data_for_timeRange(startDate,endDate,url_prefix, \
     info_ALL = []
     for i in np.arange(0,len(list_of_days)-1):
         #time.sleep(.25)
-        url_to_use = create_url(startDate=list_of_days[i], \
+        url_to_use = create_url(url_prefix=url_prefix, \
+                               startDate=list_of_days[i], \
                                endDate=list_of_days[i+1], \
-                               url_prefix=url_prefix, \
                                radius_km=radius_km,center=center, \
                                polygon=polygon,data=data,presRange=presRange, \
                                source=source,platform_id=platform_id,woceline=woceline)
@@ -372,3 +384,32 @@ def set_ax_label(str_in):
     else:
         ax_lab = str_in
     return ax_lab
+
+def mask_QC(profile, variable, variable_qc, threshold):
+    # given a <profile> object, set <variable> to None if <variable_qc> > <threshold>, 
+    # and return the resulting profile object
+
+    # helper for masking a single level dict
+    def m(level, var,qc,threshold):
+        if level[qc] > threshold:
+            level[var] = None
+        return level
+
+
+    masked_profile = copy.deepcopy(profile) # don't mutate the original
+    if 'data' in masked_profile and variable in masked_profile['data_keys'] and variable_qc in masked_profile['data_keys']:
+        masked_profile['data'] = [m(level,variable,variable_qc,threshold) for level in masked_profile['data']]
+
+    return masked_profile
+
+def simple_plot(profile, variable, variable_qc=None, qc_thresh=9999):
+
+    if 'data' in profile and variable in profile['data_keys']:
+        if variable_qc and variable_qc in profile['data_keys']:
+            plt.scatter([x[variable] for x in profile['data']],[y['pres'] for y in profile['data']], c=[c[variable_qc]>qc_thresh for c in profile['data']])
+        else:
+            plt.scatter([x[variable] for x in profile['data']],[y['pres'] for y in profile['data']])
+    
+    plt.xlabel(variable)
+    plt.ylabel('pres')
+    plt.gca().invert_yaxis()
