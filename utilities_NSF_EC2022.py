@@ -446,16 +446,6 @@ def simple_plot(profile, variable, variable_qc=None):
     plt.ylabel('pres')
     plt.gca().invert_yaxis()
 
-    def interpolate(profile, levels):
-        # given a <profile> and a list of desired pressure <levels>,
-        # return a profile with profile.data levels at the desired pressure levels, with all available data interpolated to match
-        # drop all QC and note `data_interpolated` in profile.data_warnings
-
-        for key in profile['data_keys']:
-            if '_argoqc' not in key and '_woceqc' not in key:
-                finites = [(level['pres'], level[key]) for level in profile['data'] if not math.isnan(level['pres']) and not math.isnan(level[key]) and level['pres'] is not None and level[key] is not None]
-                print(finites)
-
 def interpolate(profile, levels, method='pchip'):
     # given a <profile> and a list of desired pressure <levels>,
     # return a profile with profile.data levels at the desired pressure levels, with all available data interpolated to match
