@@ -1,9 +1,10 @@
 #data processing
-import requests, copy
+import requests, copy, math
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta, date
 import dateutil.parser
+import scipy.interpolate
 
 #import xarray as xr
 import os
@@ -437,11 +438,56 @@ def simple_plot(profile, variable, variable_qc=None):
     if 'data' in profile and variable in profile['data_keys']:
         if variable_qc and variable_qc in profile['data_keys']:
             plt.scatter([x[variable] for x in profile['data']],[y['pres'] for y in profile['data']], c=[c[variable_qc] for c in profile['data']])
+            plt.colorbar()
         else:
             plt.scatter([x[variable] for x in profile['data']],[y['pres'] for y in profile['data']])
     
     plt.xlabel(variable)
     plt.ylabel('pres')
-    plt.colorbar()
     plt.gca().invert_yaxis()
 
+    def interpolate(profile, levels):
+        # given a <profile> and a list of desired pressure <levels>,
+        # return a profile with profile.data levels at the desired pressure levels, with all available data interpolated to match
+        # drop all QC and note `data_interpolated` in profile.data_warnings
+
+        for key in profile['data_keys']:
+            if '_argoqc' not in key and '_woceqc' not in key:
+                finites = [(level['pres'], level[key]) for level in profile['data'] if not math.isnan(level['pres']) and not math.isnan(level[key]) and level['pres'] is not None and level[key] is not None]
+                print(finites)
+
+def interpolate(profile, levels, method='pchip'):
+    # given a <profile> and a list of desired pressure <levels>,
+    # return a profile with profile.data levels at the desired pressure levels, with all available data interpolated to match
+    # drop all QC and note `data_interpolated` in profile.data_warnings
+
+    if method not in ['pchip', 'linear', 'nearest']:
+        print('method must be one of pchip, linear or nearest')
+        return None
+    
+    data_names = ['pres']
+    interpolated_data = [levels]
+    for key in profile['data_keys']:
+        if '_argoqc' not in key and '_woceqc' not in key and key!='pres':
+            finites = [(level['pres'], level[key]) for level in profile['data'] if level['pres'] is not None and level[key] is not None and not math.isnan(level['pres']) and not math.isnan(level[key])]
+            pres = [x[0] for x in finites]
+            data = [x[1] for x in finites]
+            data_names.append(key)
+            if method == 'pchip':
+                interpolated_data.append(scipy.interpolate.pchip_interpolate(pres, data, levels))
+            elif method == 'linear':
+                f = scipy.interpolate.interp1d(pres, data, kind='linear', fill_value='extrapolate')
+                interpolated_data.append([f(x) for x in levels])
+            elif method == 'nearest':
+                f = scipy.interpolate.interp1d(pres, data, kind='nearest', fill_value='extrapolate')
+                interpolated_data.append([f(x) for x in levels])
+    
+    interpolated_levels = list(zip(*interpolated_data))
+    data = [{data_names[i]:d[i] for i in range(len(data_names))} for d in interpolated_levels]
+    interpolated_profile = copy.deepcopy(profile) # don't mutate the original
+    interpolated_profile['data'] = data
+    if 'data_warnings' in interpolated_profile:
+        interpolated_profile['data_warnings'].append('data_interpolated')
+    else:
+        interpolated_profile['data_warnings'] = ['data_interpolated']
+    return interpolated_profile
