@@ -385,13 +385,43 @@ def set_ax_label(str_in):
         ax_lab = str_in
     return ax_lab
 
+def qc(profile, qc_levels=[]):
+    # given a <profile> and a list <qc_levels> of tuples (<variable>, <threshold>),
+    # Suppress all measurements that don't pass the specified QC.
+    # If any measurements have qc present in <profiles.data> but don't have a level set in <qc_levels>,
+    # apply a QC threshold of 1 for argo data and 2 for CCHDO.
+
+    # determine qc suffix by data source
+    qcsuffix = None
+    if 'argo' in profile['source_info'][0]['source'][0]:
+        qcsuffix = '_argoqc'
+    else:
+        qcsuffix = '_woceqc'
+        
+    qclookup = dict(qc_levels)
+    
+    if 'data' in profile and 'data_keys' in profile:
+        for k in profile['data_keys']:
+            if qcsuffix not in k: 
+                # insist all data comes with qc
+                if k+qcsuffix not in profile['data_keys']:
+                    print(k, 'present without its QC; please add', k+qcsuffix, 'to your data query.')
+                    return None
+                if k in qclookup:
+                    profile = mask_QC(profile, k, k+qcsuffix, qclookup[k])
+                elif qcsuffix == '_argoqc':
+                    profile = mask_QC(profile, k, k+qcsuffix, 1) # default QC==1 for Argo 
+                elif qcsuffix == '_woceqc':
+                    profile = mask_QC(profile, k, k+qcsuffix, 2) # default QC==1,2 for CCHDO
+    return profile
+            
 def mask_QC(profile, variable, variable_qc, threshold):
     # given a <profile> object, set <variable> to None if <variable_qc> > <threshold>, 
     # and return the resulting profile object
 
-    # helper for masking a single level dict
+    # helper for masking a single level dict; missing QC info == failed
     def m(level, var,qc,threshold):
-        if level[qc] > threshold:
+        if not level[qc] or level[qc] > threshold:
             level[var] = None
         return level
 
@@ -402,14 +432,16 @@ def mask_QC(profile, variable, variable_qc, threshold):
 
     return masked_profile
 
-def simple_plot(profile, variable, variable_qc=None, qc_thresh=9999):
+def simple_plot(profile, variable, variable_qc=None):
 
     if 'data' in profile and variable in profile['data_keys']:
         if variable_qc and variable_qc in profile['data_keys']:
-            plt.scatter([x[variable] for x in profile['data']],[y['pres'] for y in profile['data']], c=[c[variable_qc]>qc_thresh for c in profile['data']])
+            plt.scatter([x[variable] for x in profile['data']],[y['pres'] for y in profile['data']], c=[c[variable_qc] for c in profile['data']])
         else:
             plt.scatter([x[variable] for x in profile['data']],[y['pres'] for y in profile['data']])
     
     plt.xlabel(variable)
     plt.ylabel('pres')
+    plt.colorbar()
     plt.gca().invert_yaxis()
+
