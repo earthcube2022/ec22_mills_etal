@@ -386,19 +386,25 @@ def set_ax_label(str_in):
         ax_lab = str_in
     return ax_lab
 
-def qc(profile, qc_levels=[]):
-    # given a <profile> and a list <qc_levels> of tuples (<variable>, <threshold>),
-    # Suppress all measurements that don't pass the specified QC.
-    # If any measurements have qc present in <profiles.data> but don't have a level set in <qc_levels>,
-    # apply a QC threshold of 1 for argo data and 2 for CCHDO.
+def qc_suffix(profile):
+    # given a <profile> object 
+    # return what the corresponding QC variable suffix.
 
-    # determine qc suffix by data source
     qcsuffix = None
     if 'argo' in profile['source_info'][0]['source'][0]:
         qcsuffix = '_argoqc'
     else:
         qcsuffix = '_woceqc'
-        
+
+    return qcsuffix    
+
+def qc(profile, qc_levels=[]):
+    # given a <profile> and a list <qc_levels> of tuples (<variable>, <[allowed qcs]>),
+    # Suppress all measurements that don't pass the specified QC.
+    # If any measurements have qc present in <profiles.data> but don't have a level set in <qc_levels>,
+    # require QC==1 for argo data and ==2 for CCHDO.
+
+    qcsuffix = qc_suffix(profile)        
     qclookup = dict(qc_levels)
     
     if 'data' in profile and 'data_keys' in profile:
@@ -409,27 +415,29 @@ def qc(profile, qc_levels=[]):
                     print(k, 'present without its QC; please add', k+qcsuffix, 'to your data query.')
                     return None
                 if k in qclookup:
-                    profile = mask_QC(profile, k, k+qcsuffix, qclookup[k])
+                    profile = mask_QC(profile, k, qclookup[k])
                 elif qcsuffix == '_argoqc':
-                    profile = mask_QC(profile, k, k+qcsuffix, 1) # default QC==1 for Argo 
+                    profile = mask_QC(profile, k, [1]) # default QC==1 for Argo 
                 elif qcsuffix == '_woceqc':
-                    profile = mask_QC(profile, k, k+qcsuffix, 2) # default QC==1,2 for CCHDO
+                    profile = mask_QC(profile, k, [2]) # default QC==1,2 for CCHDO
     return profile
             
-def mask_QC(profile, variable, variable_qc, threshold):
-    # given a <profile> object, set <variable> to None if <variable_qc> > <threshold>, 
+def mask_QC(profile, variable, allowed_qc):
+    # given a <profile> object, set <variable> to None if its QC flag is not in the list <allowed_qc>, 
     # and return the resulting profile object
 
+    qcsuffix = qc_suffix(profile)  
+
     # helper for masking a single level dict; missing QC info == failed
-    def m(level, var,qc,threshold):
-        if not level[qc] or level[qc] > threshold:
+    def m(level, var,qc,allowed_qc):
+        if not level[qc] or level[qc] not in allowed_qc:
             level[var] = None
         return level
 
 
     masked_profile = copy.deepcopy(profile) # don't mutate the original
-    if 'data' in masked_profile and variable in masked_profile['data_keys'] and variable_qc in masked_profile['data_keys']:
-        masked_profile['data'] = [m(level,variable,variable_qc,threshold) for level in masked_profile['data']]
+    if 'data' in masked_profile and variable in masked_profile['data_keys'] and variable+qcsuffix in masked_profile['data_keys']:
+        masked_profile['data'] = [m(level,variable,variable+qcsuffix,allowed_qc) for level in masked_profile['data']]
 
     return masked_profile
 
