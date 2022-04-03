@@ -11,10 +11,8 @@ import os
 import time
 
 #data visualization
-# %matplotlib inline
 import matplotlib.pylab as plt
 from matplotlib import ticker
-# %matplotlib inline
 
 #used for map projections
 import cartopy.crs as ccrs
@@ -36,17 +34,13 @@ def check_error_message(ans,writeFlag=False):
         if writeFlag:
             print(str(ans['code']) + ': ' + ans['message'])
         ##### NOTE: we should include here below all the codes that do not return data as the user expects
-        if ans['code']==403 or ans['code']==400:
+        if ans['code'] >= 400 and ans['code'] != 404:
             print('Data were not returned')
             print(ans)
-            ciao_no_data
+            raise Exception('No data')
         return ans['code']        
     elif ans:
         return np.nan
-#         if ans['code']==403:
-#             print(ans)
-#             ciao_stop
-#
 ########### checks for objects coming back from API queries
 def check_list(lst,writeFlag=False):
     if lst and isinstance(lst,list):
@@ -95,7 +89,7 @@ def get_data_from_url(url,myAPIkey,writeFlag=False):
         ans = check_error_message(ans=d_raw,writeFlag=writeFlag)
     except:
         print(url)
-        ciao_no_data
+        raise Exception('No data')
     # check that data are a list of dictionaries as expected
     if ans == 404:
         return []
@@ -105,7 +99,7 @@ def get_data_from_url(url,myAPIkey,writeFlag=False):
         return d_raw
     else:
         print(ans)
-        ciao_check_obj_type_and_err_code
+        raise Exception('Check object type and error code')
 #############
 def create_url(url_prefix, \
                startDate='',endDate='', \
@@ -240,7 +234,7 @@ def get_info_from_df(df,info_to_store):
             if len(eval(i)) ==len(df) or not eval(i):
                 eval('lst_out.append('+ i +')')
             else:
-                ciao_check_length
+                raise Exception('check length')
             
         dict_info = {}
         for i,ival in zip(info_to_store,lst_out):
