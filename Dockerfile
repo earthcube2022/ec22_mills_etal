@@ -2,7 +2,9 @@ FROM conda/miniconda3
 
 RUN apt-get update
 RUN apt-get install -y nano gcc
-RUN pip install notebook
+RUN pip install notebook jupyter_contrib_nbextensions
+RUN jupyter contrib nbextension install
+RUN jupyter nbextension enable toc2/main
 WORKDIR /books
 COPY environment.yml /books/environment.yml
 SHELL ["/bin/bash", "-c"]
