@@ -30,6 +30,9 @@ from dateutil import parser
 # 
 # check if there is an error message
 def check_error_message(ans,writeFlag=False):
+    # ans: response JSON from an API query
+    # writeFlag: bool, true == print verbose errors, if found
+    # returns error code if found, or NaN if not.
     if isinstance(ans,dict) and 'message' in ans.keys() and 'code' in ans.keys():
         if writeFlag:
             print(str(ans['code']) + ': ' + ans['message'])
@@ -41,34 +44,13 @@ def check_error_message(ans,writeFlag=False):
         return ans['code']        
     elif ans:
         return np.nan
+
 ########### checks for objects coming back from API queries
-def check_list(lst,writeFlag=False):
-    if lst and isinstance(lst,list):
-        if writeFlag:
-            print('Number of items: '+str(len(lst)))
-        return 1
-    else:
-        if writeFlag:
-            print(lst) 
-        return 0
-####
-def check_list_of_list(lst,writeFlag=False):
-    if lst and isinstance(lst,list):
-        if all(isinstance(i, list) for i in lst):
-            if writeFlag:
-                print('Number of items: '+str(len(lst)))
-            return 1
-        else:
-            if writeFlag:
-                print(lst) 
-            return 0
-    else:
-        if writeFlag:
-            print(lst) 
-        return 0
-###
-####
+
 def check_list_of_dict(lst,writeFlag=False):
+    # lst: object to check if is a list of dicts
+    # writeFlag: bool, true == verbose mode
+    # return 1 if lst is a list of dicts, 0 ow
     if lst and isinstance(lst,list):
         if all(isinstance(i, dict) for i in lst):
             if writeFlag:
@@ -82,8 +64,11 @@ def check_list_of_dict(lst,writeFlag=False):
         if writeFlag:
             print(lst) 
         return 0 
-#############
+
 def get_data_from_url(url,myAPIkey,writeFlag=False):
+    # url: string url to attempt to query
+    # myAPIkey: string API key, get yours at https://argovis-apikey-manager-atoc-argovis-dev.apps.containers02.colorado.edu/
+    # returns a dictionary representation of the reponse from the endpoint hit in url; empty list if 404.
     try:
         d_raw = requests.get(url,headers={"x-argokey": myAPIkey}).json()
         ans = check_error_message(ans=d_raw,writeFlag=writeFlag)
@@ -100,36 +85,25 @@ def get_data_from_url(url,myAPIkey,writeFlag=False):
     else:
         print(ans)
         raise Exception('Check object type and error code')
-#############
+
 def create_url(url_prefix, \
                startDate='',endDate='', \
                radius_km=[],center=[], \
                polygon=[],data='',presRange='', \
                source='',platform_id='',woceline='',profile_id=''):
-    # what is not used with which queries
-    # what does not make sense to query together
-    # does this order matter in the url?
-    # go-ship variable names: temp is not in 
-    # https://docs.google.com/spreadsheets/d/1WmrEcUwem3PLjPpEjm4exZYIG3Pk73L_iTlGjn14buY/edit#gid=0
-    # what is temp? how do we distinguish between temp_btl and temp_ctd for go-ship currently?
-    #
-    ### PLEASE NOTE: 
-    ## for the metadata query (getData=False), presRange is not used even if specified
-    ## url_prefix should also include the type of call, e.g. '/profiles?', '/platform?'
-    #
-    ### OTHER NOTES: 
-    #
-    #### HERE we should call a function that checks that the input the user sends in makes sense
-    #### e.g. the user should not specify data and datavars at the same time
-    #### (as another example they should not have polygon and radius_km at the same time... and if
-    #### they have radius_km, they should have center): if they include input 
-    #### that does not make sense or is confusing, a message
-    #### should appear to tell e.g. that only datavars will be used. For now I will create a function
-    #### that makes decisions without sending error messages:
-    #### if users set writeFlag = True, then they will see the URL when get_data_from_url is called in get_data_for_timeRange
-     
-    # In Python 3.10, the part below should be using match/case
-    
+    # url_prefix: string root of API routes
+    # startDate [endDate]: string start [end] date to filter documents on, in ISO 8601 UTC datestrings ie 1999-12-31T00:00:00Z
+    # radius_km: float distance to search in proximity search; must be passed with center
+    # center: [lon, lat] list of center of proximity search; must be passed with radius_km
+    # polygon: [[lon0, lat0], [lon1, lat1], ... [lon0, lat0]] list of lists of lon/lat pairs describing polygon bounding box for region search; first coord must == last coord
+    # data: comma delimited string of data variables to seatch for ANDed together, ie 'pres,temp,doxy'. Admits negation ('pres,temp,~doxy'); will return the actual measurements listed and filter for profiles that have them. Get metadata only by including 'metadata-only'.
+    # presRange: comma delimited string indicating min and max pressure to return levels for, ie '0,100' for top 100 dbar
+    # source: comma delimited string of data sources, ANDed together, such as 'argo_core' or 'cchdo_go-ship'. Accepts negation, ie 'argo_core,~argo_bgc'
+    # platform_id: string indicating ID of Argo platform to search for
+    # woceline: string indicating WOCE line to search for
+    # profile_id: string indicating profile ID to search for
+    # returns: string URL for performing the desired search (note all filters are ANDed together).
+
     url = url_prefix
     
     if startDate:
@@ -168,18 +142,18 @@ def create_url(url_prefix, \
         url = url + '&id=' + profile_id
         
     return url
-#############
+
 def get_data_for_timeRange(startDate,endDate,url_prefix, \
                      myAPIkey,\
                      radius_km=[],center=[], \
                      polygon=[],data='',presRange='', \
                      source='',platform_id='',woceline='', \
                      dt_tag='d',writeFlag=False):
-    # returns a panda dataFrame
-    ### PLEASE NOTE: 
-    ## for the metadata query (getData=False), presRange is not used even if specified
-    ## url_prefix should also include the type of call, e.g. '/profiles?'
-       
+    # all inputs as create_url, excpet:
+    # myAPIkey: string API key for Argovis API
+    # dt_tag: frequency tag as defined at https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases; determines how much data is downloaded per request
+    # returns a dataframe describing the data returned by the specified query string filters
+
     list_of_days = create_list_of_days(startDate,endDate,dt_tag=dt_tag)
     info_ALL = []
     for i in np.arange(0,len(list_of_days)-1):
@@ -196,8 +170,12 @@ def get_data_for_timeRange(startDate,endDate,url_prefix, \
     info_ALL = pd.DataFrame(info_ALL)
     
     return info_ALL
-#############
+
 def get_info_from_df(df,info_to_store):
+    # df: dataframe as returned by ie get_data_for_timeRange
+    # info_to_store: list of strings indicating variables of interest
+    # returns dictionary packing of listed info from dataframe
+
     if isinstance(df,pd.DataFrame):
         lon  = []
         lat  = []
@@ -241,7 +219,7 @@ def get_info_from_df(df,info_to_store):
             if ival:
                 dict_info[i] = ival
     return dict_info
-##############
+
 # create a list of days (in string format) from string dates in input, e.g.
 #startDate='2021-05-01T00:00:00Z'
 #endDate  ='2021-05-10T00:00:00Z'
@@ -254,23 +232,27 @@ def create_list_of_days(startDate,endDate,dt_tag='d'):
                                    .index.strftime('%Y-%m-%dT%H:%M:%SZ')
                                    .tolist()
                 )
-    #####list_of_days      = [datetime.strptime(ii,'%Y-%m-%dT%H:%M:%SZ') for ii in bfr_times]
-    ## this should be added back if I am allowed to do more queries (UPDATE: IT MAY NOT BE NEEDED)
     if list_of_days[-1] != endDate:
         list_of_days.append(endDate[0:11]+'23:59:59Z')
     return list_of_days
-##################
+
 def polygon_lon_lat(polygon_str):
+    # polygon_str: string value of polygon search parameter, ie "[[lon0,lat0],[lon1,lat1],...,[lon0,lat0]]"
     # convert the polygon shape to lon and lat and save in a dictionary
     polygon_lon_lat_dict = {'lon': [float(i) for i in ((polygon_str.replace('[','')).replace(']','')).split(',')[0::2]], \
                     'lat': [float(i) for i in ((polygon_str.replace('[','')).replace(']','')).split(',')[1::2]]
                    }
     return polygon_lon_lat_dict
-##################
-##################
+
 ########### data visualization #################
 # set up a map
 def set_up_map(set_extent_info,central_long=180,delta_lonGrid=30,delta_latGrid=30,fnt_size=28):
+    # set_extent_info: [min lon, max lon, min lat, max lat] for mapping region
+    # central_long: central longitude for map projection
+    # delta_lonGrid: how close in degrees to space longitude ticks
+    # delta_latGrid: how close in degrees to space latitude ticks
+    # fnt_size: x/y axis label font size
+
     # this declares a recentered projection for Pacific areas
     usemap_proj = ccrs.PlateCarree(central_longitude=central_long)
     usemap_proj._threshold /= 20.  # to make greatcircle smooth
@@ -297,14 +279,13 @@ def set_up_map(set_extent_info,central_long=180,delta_lonGrid=30,delta_latGrid=3
     ax.add_feature(cft.BORDERS, linestyle=':')
 
     geodetic = ccrs.Geodetic()
-    #plate_carree = ccrs.PlateCarree(central_longitude=central_long)
     return ax, gl, usemap_proj
-###############
-def plot_locations_withColor(lon,lat,cols,markersz=10,fnt_size=28):
 
+def plot_locations_withColor(lon,lat,cols,markersz=10,fnt_size=28):
     # plot a map with profile locations: if cols is only 1 string, then the same color is used for all the dots
     # if cols is a list of strings of the same length as e.g. lon, then one col per lon is used
     # else 'k' is used for color
+
     for i in np.arange(0,len(lon),1):
         if len(cols) == len(lon):
             col = cols[i]
@@ -314,12 +295,19 @@ def plot_locations_withColor(lon,lat,cols,markersz=10,fnt_size=28):
             col = 'k'
         plt.plot(lon[i],lat[i],marker='o',markersize=markersz,color=col,transform=ccrs.PlateCarree()) # cols_bySource[i]
 
-    # im = plt.scatter(float_events_lon_i,float_events_lat_i,transform=ccrs.PlateCarree(),s=1000,marker='*',
-    #                         color=my_colors[i], linewidth=3.5) 
-###############
+
 def set_map_and_plot_locations_withColor(lon,lat,cols,polygon_lon_lat_dict=[],markersz=10,dx=15,dy=15,central_long=-30, \
                                          delta_lonGrid=15,delta_latGrid=15,fnt_size=28, \
                                          fig_size=(10,10)):
+    # lon: list of all longitudes of interest
+    # lat: list of all latitudes of interest
+    # polygon_lon_lat_dict: dictionary of longitudes and latitudes describing polygon region, see polygon_lon_lat function
+    # markersz: scatterplot marker size
+    # dx: degrees of margin space in longitude
+    # dy: degrees of margin space in latitude
+    # central_long, delta_lonGrid, delta_latGrid, fnt_size: see set_up_map
+    # fig_size: matplotlib figure size
+
     # set up the map
     fig = plt.figure(figsize=fig_size)
     lon_all = lon
@@ -336,7 +324,7 @@ def set_map_and_plot_locations_withColor(lon,lat,cols,polygon_lon_lat_dict=[],ma
         plt.plot(polygon_lon_lat_dict['lon'],polygon_lon_lat_dict['lat'],'-k',transform=ccrs.PlateCarree()) 
     plot_locations_withColor(lon=lon,lat=lat, \
                              cols=cols,markersz=markersz,fnt_size=28)
-###############
+
 # pick color based on string
 def select_color_byString(str_in):
     if str_in == 'argo_core':
@@ -366,6 +354,7 @@ def select_color_byList(lst_in):
     else:
         col = 'gray'
     return col   
+    
 # pick label
 def set_ax_label(str_in):
     if str_in=='psal':
