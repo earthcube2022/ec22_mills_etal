@@ -151,7 +151,9 @@ def get_data_for_timeRange(startDate,endDate,url_prefix, \
                      dt_tag='d',writeFlag=False):
     # all inputs as create_url, excpet:
     # myAPIkey: string API key for Argovis API
-    # dt_tag: frequency tag as defined at https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases; determines how much data is downloaded per request
+    # dt_tag: frequency tag as defined at https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases; 
+    # determines how much data is downloaded per request (we suggest 'd' to avoid requesting too much data all at once; it should be tuned based e.g. 
+    # on the size of the region of interest)
     # returns a dataframe describing the data returned by the specified query string filters
 
     list_of_days = create_list_of_days(startDate,endDate,dt_tag=dt_tag)
