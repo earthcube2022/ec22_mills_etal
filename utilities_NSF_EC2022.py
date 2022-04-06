@@ -3,7 +3,7 @@ import requests, copy, math
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta, date
-import dateutil.parser
+#import dateutil.parser
 import scipy.interpolate
 
 #import xarray as xr
@@ -24,11 +24,13 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 import warnings
 warnings.filterwarnings('ignore')
-from dateutil import parser
+#from dateutil import parser
 
 ########### data processing #################
 # 
 # check if there is an error message
+#
+# ans: object returned by the API query
 def check_error_message(ans,writeFlag=False):
     # ans: response JSON from an API query
     # writeFlag: bool, true == print verbose errors, if found
@@ -45,8 +47,10 @@ def check_error_message(ans,writeFlag=False):
     elif ans:
         return np.nan
 
-########### checks for objects coming back from API queries
-
+# 
+# check if the object is a list of dictionaries
+# 
+# lst: object to check
 def check_list_of_dict(lst,writeFlag=False):
     # lst: object to check if is a list of dicts
     # writeFlag: bool, true == verbose mode
@@ -67,7 +71,8 @@ def check_list_of_dict(lst,writeFlag=False):
 
 def get_data_from_url(url,myAPIkey,writeFlag=False):
     # url: string url to attempt to query
-    # myAPIkey: string API key, get yours at https://argovis-apikey-manager-atoc-argovis-dev.apps.containers02.colorado.edu/
+    # myAPIkey: string API key, get yours at https://argovis-apikey-manager-atoc-argovis-dev.apps.containers02.colorado.edu/ 
+    # myAPIkey can also be left empty '', yet in this case the user is more likely to exceed API request limits (and get HTTP 403 errors).
     # returns a dictionary representation of the reponse from the endpoint hit in url; empty list if 404.
     try:
         d_raw = requests.get(url,headers={"x-argokey": myAPIkey}).json()
