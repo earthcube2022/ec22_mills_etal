@@ -27,10 +27,8 @@ warnings.filterwarnings('ignore')
 #from dateutil import parser
 
 ########### data processing #################
-# 
+#####
 # check if there is an error message
-#
-# ans: object returned by the API query
 def check_error_message(ans,writeFlag=False):
     # ans: response JSON from an API query
     # writeFlag: bool, true == print verbose errors, if found
@@ -46,11 +44,8 @@ def check_error_message(ans,writeFlag=False):
         return ans['code']        
     elif ans:
         return np.nan
-
-# 
+#####
 # check if the object is a list of dictionaries
-# 
-# lst: object to check
 def check_list_of_dict(lst,writeFlag=False):
     # lst: object to check if is a list of dicts
     # writeFlag: bool, true == verbose mode
@@ -68,7 +63,7 @@ def check_list_of_dict(lst,writeFlag=False):
         if writeFlag:
             print(lst) 
         return 0 
-
+######
 def get_data_from_url(url,myAPIkey,writeFlag=False):
     # url: string url to attempt to query
     # myAPIkey: string API key, get yours at https://argovis-apikey-manager-atoc-argovis-dev.apps.containers02.colorado.edu/ 
@@ -90,7 +85,7 @@ def get_data_from_url(url,myAPIkey,writeFlag=False):
     else:
         print(ans)
         raise Exception('Check object type and error code')
-
+#####
 def create_url(url_prefix, \
                startDate='',endDate='', \
                radius_km=[],center=[], \
@@ -147,7 +142,7 @@ def create_url(url_prefix, \
         url = url + '&id=' + profile_id
         
     return url
-
+#####
 def get_data_for_timeRange(startDate,endDate,url_prefix, \
                      myAPIkey,\
                      radius_km=[],center=[], \
@@ -177,7 +172,7 @@ def get_data_for_timeRange(startDate,endDate,url_prefix, \
     info_ALL = pd.DataFrame(info_ALL)
     
     return info_ALL
-
+#####
 def get_info_from_df(df,info_to_store):
     # df: dataframe as returned by ie get_data_for_timeRange
     # info_to_store: list of strings indicating variables of interest
@@ -226,7 +221,7 @@ def get_info_from_df(df,info_to_store):
             if ival:
                 dict_info[i] = ival
     return dict_info
-
+######
 # create a list of days (in string format) from string dates in input, e.g.
 #startDate='2021-05-01T00:00:00Z'
 #endDate  ='2021-05-10T00:00:00Z'
@@ -250,7 +245,7 @@ def polygon_lon_lat(polygon_str):
                     'lat': [float(i) for i in ((polygon_str.replace('[','')).replace(']','')).split(',')[1::2]]
                    }
     return polygon_lon_lat_dict
-
+######
 ########### data visualization #################
 # set up a map
 def set_up_map(set_extent_info,central_long=180,delta_lonGrid=30,delta_latGrid=30,fnt_size=28):
@@ -287,7 +282,7 @@ def set_up_map(set_extent_info,central_long=180,delta_lonGrid=30,delta_latGrid=3
 
     geodetic = ccrs.Geodetic()
     return ax, gl, usemap_proj
-
+######
 def plot_locations_withColor(lon,lat,cols,markersz=10,fnt_size=28):
     # plot a map with profile locations: if cols is only 1 string, then the same color is used for all the dots
     # if cols is a list of strings of the same length as e.g. lon, then one col per lon is used
@@ -301,8 +296,7 @@ def plot_locations_withColor(lon,lat,cols,markersz=10,fnt_size=28):
         else:
             col = 'k'
         plt.plot(lon[i],lat[i],marker='o',markersize=markersz,color=col,transform=ccrs.PlateCarree()) # cols_bySource[i]
-
-
+######
 def set_map_and_plot_locations_withColor(lon,lat,cols,polygon_lon_lat_dict=[],markersz=10,dx=15,dy=15,central_long=-30, \
                                          delta_lonGrid=15,delta_latGrid=15,fnt_size=28, \
                                          fig_size=(10,10)):
@@ -331,7 +325,7 @@ def set_map_and_plot_locations_withColor(lon,lat,cols,polygon_lon_lat_dict=[],ma
         plt.plot(polygon_lon_lat_dict['lon'],polygon_lon_lat_dict['lat'],'-k',transform=ccrs.PlateCarree()) 
     plot_locations_withColor(lon=lon,lat=lat, \
                              cols=cols,markersz=markersz,fnt_size=28)
-
+#######
 # pick color based on string
 def select_color_byString(str_in):
     if str_in == 'argo_core':
@@ -345,7 +339,7 @@ def select_color_byString(str_in):
     else:
         col = 'k'
     return col
-        
+#####        
 # pick color based on list of sources
 def select_color_byList(lst_in):
     if any("argo_bgc" in s for s in lst_in) and any("argo_deep" in s for s in lst_in):
@@ -361,7 +355,7 @@ def select_color_byList(lst_in):
     else:
         col = 'gray'
     return col   
-    
+######    
 # pick label
 def set_ax_label(str_in):
     if str_in=='psal':
@@ -375,7 +369,7 @@ def set_ax_label(str_in):
     else:
         ax_lab = str_in
     return ax_lab
-
+#######
 def qc_suffix(profile):
     # given a <profile> object 
     # return what the corresponding QC variable suffix.
@@ -387,7 +381,7 @@ def qc_suffix(profile):
         qcsuffix = '_woceqc'
 
     return qcsuffix    
-
+#######
 def qc(profile, qc_levels=[]):
     # given a <profile> and a list <qc_levels> of tuples (<variable>, <[allowed qcs]>),
     # Suppress all measurements that don't pass the specified QC.
@@ -411,7 +405,7 @@ def qc(profile, qc_levels=[]):
                 elif qcsuffix == '_woceqc':
                     profile = mask_QC(profile, k, [2]) # default QC==1,2 for CCHDO
     return profile
-            
+######            
 def mask_QC(profile, variable, allowed_qc):
     # given a <profile> object, set <variable> to None if its QC flag is not in the list <allowed_qc>, 
     # and return the resulting profile object
@@ -430,7 +424,7 @@ def mask_QC(profile, variable, allowed_qc):
         masked_profile['data'] = [m(level,variable,variable+qcsuffix,allowed_qc) for level in masked_profile['data']]
 
     return masked_profile
-
+######
 def simple_plot(profile, variable, variable_qc=None):
 
     if 'data' in profile and variable in profile['data_keys']:
@@ -443,7 +437,7 @@ def simple_plot(profile, variable, variable_qc=None):
     plt.xlabel(variable)
     plt.ylabel('pres')
     plt.gca().invert_yaxis()
-
+######
 def interpolate(profile, levels, method='pchip'):
     # given a <profile> and a list of desired pressure <levels>,
     # return a profile with profile.data levels at the desired pressure levels, with all available data interpolated to match
