@@ -2,13 +2,7 @@
 import requests, copy, math
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta, date
-#import dateutil.parser
 import scipy.interpolate
-
-#import xarray as xr
-import os
-import time
 
 #data visualization
 import matplotlib.pylab as plt
@@ -19,12 +13,8 @@ import cartopy.crs as ccrs
 import cartopy.feature as cft
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
-# #widgets for user interaction
-# import ipywidgets as widgets
-
 import warnings
 warnings.filterwarnings('ignore')
-#from dateutil import parser
 
 ########### data processing #################
 #####
@@ -159,7 +149,6 @@ def get_data_for_timeRange(startDate,endDate,url_prefix, \
     list_of_days = create_list_of_days(startDate,endDate,dt_tag=dt_tag)
     info_ALL = []
     for i in np.arange(0,len(list_of_days)-1):
-        #time.sleep(.25)
         url_to_use = create_url(url_prefix=url_prefix, \
                                startDate=list_of_days[i], \
                                endDate=list_of_days[i+1], \
@@ -326,20 +315,7 @@ def set_map_and_plot_locations_withColor(lon,lat,cols,polygon_lon_lat_dict=[],ma
     plot_locations_withColor(lon=lon,lat=lat, \
                              cols=cols,markersz=markersz,fnt_size=28)
 #######
-# pick color based on string
-def select_color_byString(str_in):
-    if str_in == 'argo_core':
-        col = 'y'
-    elif str_in == 'argo_bgc':
-        col = 'g'
-    elif str_in == 'argo_deep':
-        col = 'b'
-    elif str_in == 'cchdo_go-ship':
-        col = 'r'
-    else:
-        col = 'k'
-    return col
-#####        
+
 # pick color based on list of sources
 def select_color_byList(lst_in):
     if any("argo_bgc" in s for s in lst_in) and any("argo_deep" in s for s in lst_in):
