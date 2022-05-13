@@ -1,4 +1,4 @@
-Click this link to launch and run notebook: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/argovis/ec2022/rc?labpath=WM_01_intro_to_argovis_api.ipynb)
+Click this link to launch and run notebook: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/earthcube2022/ec22_mills_etal/rc?labpath=WM_01_intro_to_argovis_api.ipynb)
 
 # Intro to Argovis' API
 
