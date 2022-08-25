@@ -23,17 +23,24 @@ def check_error_message(ans,writeFlag=False):
     # ans: response JSON from an API query
     # writeFlag: bool, true == print verbose errors, if found
     # returns error code if found, or NaN if not.
+
+    ## error might be top level dict, or might be first element of array:
     if isinstance(ans,dict) and 'message' in ans.keys() and 'code' in ans.keys():
-        if writeFlag:
-            print(str(ans['code']) + ': ' + ans['message'])
-        ##### NOTE: we should include here below all the codes that do not return data as the user expects
-        if ans['code'] >= 400 and ans['code'] != 404:
-            print('Data were not returned')
-            print(ans)
-            raise Exception('No data')
-        return ans['code']        
+        e = ans
+    elif 'message' in ans[0].keys() and 'code' in ans[0].keys():
+        e = ans[0]
     elif ans:
         return np.nan
+
+    if writeFlag:
+        print(str(e['code']) + ': ' + e['message'])
+    ##### NOTE: we should include here below all the codes that do not return data as the user expects
+    if e['code'] >= 400 and e['code'] != 404:
+        print('Data were not returned')
+        print(e)
+        raise Exception('No data')
+    return e['code']        
+
 #####
 # check if the object is a list of dictionaries
 def check_list_of_dict(lst,writeFlag=False):
@@ -63,7 +70,6 @@ def get_data_from_url(url,myAPIkey,writeFlag=False):
         d_raw = requests.get(url,headers={"x-argokey": myAPIkey}).json()
         ans = check_error_message(ans=d_raw,writeFlag=writeFlag)
     except:
-        print(url)
         raise Exception('No data')
     # check that data are a list of dictionaries as expected
     if ans == 404:
@@ -191,7 +197,7 @@ def get_info_from_df(df,info_to_store):
             #
             if any("cols_bySource" in s for s in info_to_store):
                 bfr_source= []
-                for jsource in df.source_info[i]:
+                for jsource in df.source[i]:
                     bfr_source = bfr_source + jsource['source']
                 cols_bySource.append(select_color_byList(lst_in=bfr_source))
             # 
@@ -305,7 +311,7 @@ def set_map_and_plot_locations_withColor(lon,lat,cols,polygon_lon_lat_dict=[],ma
     if polygon_lon_lat_dict:
         lon_all = lon_all + polygon_lon_lat_dict['lon']
         lat_all = lat_all + polygon_lon_lat_dict['lat']
-    ax, gl, usemap_proj = set_up_map(set_extent_info=[min(lon_all)-dx,max(lon_all)+dx,min(lat_all)-dy,max(lat_all)+dy],
+    ax, gl, usemap_proj = set_up_map(set_extent_info=[(min(lon_all)-dx)%360,(max(lon_all)+dx)%360,min(lat_all)-dy,max(lat_all)+dy],
                                      central_long=central_long,
                                      delta_lonGrid=delta_lonGrid,delta_latGrid=delta_latGrid,fnt_size=fnt_size,
                                      )
@@ -351,7 +357,7 @@ def qc_suffix(profile):
     # return what the corresponding QC variable suffix.
 
     qcsuffix = None
-    if 'argo' in profile['source_info'][0]['source'][0]:
+    if 'argo' in profile['source'][0]['source'][0]:
         qcsuffix = '_argoqc'
     else:
         qcsuffix = '_woceqc'
@@ -390,7 +396,7 @@ def mask_QC(profile, variable, allowed_qc):
 
     # helper for masking a single level dict; missing QC info == failed
     def m(level, var,qc,allowed_qc):
-        if not level[qc] or level[qc] not in allowed_qc:
+        if qc not in level or not level[qc] or level[qc] not in allowed_qc:
             level[var] = None
         return level
 
@@ -405,13 +411,15 @@ def simple_plot(profile, variable, variable_qc=None):
 
     if 'data' in profile and variable in profile['data_keys']:
         if variable_qc and variable_qc in profile['data_keys']:
-            plt.scatter([x[variable] for x in profile['data']],[y['pres'] for y in profile['data']], c=[c[variable_qc] for c in profile['data']])
+            d = [x for x in profile['data'] if variable in x and variable_qc in x]
+            plt.scatter([x[variable] for x in d],[y['pressure'] for y in d], c=[c[variable_qc] for c in d])
             plt.colorbar()
         else:
-            plt.scatter([x[variable] for x in profile['data']],[y['pres'] for y in profile['data']])
+            d = [x for x in profile['data'] if variable in x]
+            plt.scatter([x[variable] for x in d],[y['pressure'] for y in d])
     
     plt.xlabel(variable)
-    plt.ylabel('pres')
+    plt.ylabel('pressure')
     plt.gca().invert_yaxis()
 ######
 def interpolate(profile, levels, method='pchip'):
@@ -423,21 +431,21 @@ def interpolate(profile, levels, method='pchip'):
         print('method must be one of pchip, linear or nearest')
         return None
     
-    data_names = ['pres']
+    data_names = ['pressure']
     interpolated_data = [levels]
     for key in profile['data_keys']:
-        if '_argoqc' not in key and '_woceqc' not in key and key!='pres':
-            finites = [(level['pres'], level[key]) for level in profile['data'] if level['pres'] is not None and level[key] is not None and not math.isnan(level['pres']) and not math.isnan(level[key])]
-            pres = [x[0] for x in finites]
+        if '_argoqc' not in key and '_woceqc' not in key and key!='pressure':
+            finites = [(level['pressure'], level[key]) for level in profile['data'] if level['pressure'] is not None and level[key] is not None and not math.isnan(level['pressure']) and not math.isnan(level[key])]
+            pressure = [x[0] for x in finites]
             data = [x[1] for x in finites]
             data_names.append(key)
             if method == 'pchip':
-                interpolated_data.append(scipy.interpolate.pchip_interpolate(pres, data, levels))
+                interpolated_data.append(scipy.interpolate.pchip_interpolate(pressure, data, levels))
             elif method == 'linear':
-                f = scipy.interpolate.interp1d(pres, data, kind='linear', fill_value='extrapolate')
+                f = scipy.interpolate.interp1d(pressure, data, kind='linear', fill_value='extrapolate')
                 interpolated_data.append([f(x) for x in levels])
             elif method == 'nearest':
-                f = scipy.interpolate.interp1d(pres, data, kind='nearest', fill_value='extrapolate')
+                f = scipy.interpolate.interp1d(pressure, data, kind='nearest', fill_value='extrapolate')
                 interpolated_data.append([f(x) for x in levels])
     
     interpolated_levels = list(zip(*interpolated_data))
