@@ -1,0 +1,35 @@
+{
+    "title": "Intro to Argovis' API",
+    "creators": [
+        {
+            "name": "William Mills",
+            "affiliation": "Department of Atmospheric and Oceanic Sciences, University of Colorado Boulder, Boulder, CO, United States",
+            "orcid": "0000-0002-5887-6270"
+        },
+        {
+            "name": "Donata Giglio",
+            "affiliation": "Department of Atmospheric and Oceanic Sciences, University of Colorado Boulder, Boulder, CO, United States",
+            "orcid": "0000-0002-3738-4293"
+        },
+        {
+            "name": "Megan Scanderbeg",
+            "affiliation": "Scripps Institution of Oceanography",
+            "orcid": "0000-0002-0398-7272"
+        },
+        {
+            "name": "Tyler Tucker",
+            "affiliation": "W. M. Keck Observatory",
+            "orcid": "0000-0002-0560-9777"
+        }
+    ],
+    "keywords": [
+        "Argovis",
+        "Argo",
+        "floats",
+        "GO-SHIP",
+        "oceanic profiles",
+        "hydrographic data",
+        "profiling floats",
+        "in-situ observations"
+    ]
+}
