@@ -15,3 +15,7 @@ The Argovis project (argovis.colorado.edu) is upgrading its API, with a new desi
 > **This is a beta product!**
 > Argovis' new API is currently undergoing heavy development. Therefore, everything in these notebooks should be understood as a technical preview only; implementation details may change before a 
 stable release is made. Please send feedback and ideas to argovis@colorado.edu, and see the API docs as they evolve at https://argovis-api.colorado.edu/docs/.
+
+## See Also
+
+A growing collection of other Argovis-focused notebooks is maintained at https://github.com/argovis/demo_notebooks.
