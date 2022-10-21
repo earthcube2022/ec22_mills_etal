@@ -1,7 +1,7 @@
 name: py_NSF_EC2022
 
 dependencies:
-  - python=3.8
+  - python=3.9
   - requests
   - cartopy
   - pandas
